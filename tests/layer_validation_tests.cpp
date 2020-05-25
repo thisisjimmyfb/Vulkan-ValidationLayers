@@ -26,6 +26,9 @@
 #include "cast_utils.h"
 #include "layer_validation_tests.h"
 
+// Global list of sType,size identifiers
+std::vector<std::pair<uint32_t, uint32_t>> custom_stype_info{};
+
 void SetEnvVar(const char *env_var, const char *value) {
 #if defined(_WIN32)
     SetEnvironmentVariable(env_var, value);
