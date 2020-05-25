@@ -27,6 +27,53 @@
 #include "cast_utils.h"
 #include "layer_validation_tests.h"
 
+TEST_F(VkLayerTest, CustomStypeStruct) {
+    TEST_DESCRIPTION("Positive Test for ability to specified custom pNext structs");
+
+    // Create a custom structure
+    typedef struct CustomStruct {
+        VkStructureType sType;
+        const void *pNext;
+        uint32_t custom_data;
+    } CustomStruct;
+
+    uint32_t custom_stype = 3000300000;
+    CustomStruct custom_struct;
+    custom_struct.pNext = nullptr;
+    custom_struct.sType = static_cast<VkStructureType>(custom_stype);
+    custom_struct.custom_data = 44;
+
+    // Communicate list of structinfo pairs to layers
+    SetEnvVar("VK_LAYER_CUSTOM_STYPE_LIST", "3000300000;24");
+
+    ASSERT_NO_FATAL_FAILURE(Init());
+
+    uint32_t queue_family_index = 0;
+    VkBufferCreateInfo buffer_create_info = {};
+    buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffer_create_info.size = 1024;
+    buffer_create_info.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+    buffer_create_info.queueFamilyIndexCount = 1;
+    buffer_create_info.pQueueFamilyIndices = &queue_family_index;
+    VkBufferObj buffer;
+    buffer.init(*m_device, buffer_create_info);
+    VkBufferView buffer_view;
+    VkBufferViewCreateInfo bvci = {};
+    bvci.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+    bvci.pNext = &custom_struct;  // Add custom struct through pNext
+    bvci.buffer = buffer.handle();
+    bvci.format = VK_FORMAT_R32_SFLOAT;
+    bvci.range = VK_WHOLE_SIZE;
+
+    m_errorMonitor->ExpectSuccess(kErrorBit);
+    vk::CreateBufferView(m_device->device(), &bvci, NULL, &buffer_view);
+    m_errorMonitor->VerifyNotFound();
+
+    vk::DestroyBufferView(m_device->device(), buffer_view, nullptr);
+    // Clean up env var for remaining tests
+    SetEnvVar("VK_LAYER_CUSTOM_STYPE_LIST", "");
+}
+
 TEST_F(VkLayerTest, MessageIdFilterString) {
     TEST_DESCRIPTION("Validate that message id string filtering is working");
 
