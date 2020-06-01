@@ -47,13 +47,20 @@
 #
 #   MESSAGE_ID_FILTER:
 #   =============
-#   <LayerIdentifier>.messag_id_filter: This is a comma-delineated list of VUIDs
+#   <LayerIdentifier>.message_id_filter: This is a comma-delineated list of VUIDs
 #    or VUID identifers which are to be IGNORED by the layers. These can be in
 #    any combination of the normal VUID string form,
 #        "VUID-vkCmdPipelineBarrier-image-02635",
 #    or the hexadecimal or decimal representation of the VUID id returned from
 #    a validation message, for example:
 #        0xdf3391a2 or 3744698786.
+#
+#   DUPLICATE_MESSAGE_LIMIT:
+#   =============
+#   <LayerIdentifier>.duplicate_message_limit: This is an unsigned integer
+#    which signifies the limit for the number of times a specific validation
+#    message (identified by its VUID) will be output by the layers. Any non-
+#    zero value will be respected, and the default is no limit.
 #
 #   LOG_FILENAME:
 #   =============
@@ -107,6 +114,9 @@ khronos_validation.log_filename = stdout
 
 # Example entry showing how to filter specific VUIDs from layer output
 #khronos_validation.message_id_filter = 3744698786,0xdf3391a2,"VUID-vkCmdPipelineBarrier-image-02635"
+
+# Example entry showing how to limit the number of repeated validation messages
+#khronos_validation.duplicate_message_limit = 25
 
 # Example entry showing how to disable threading checks and validation at DestroyPipeline time
 #khronos_validation.disables = VK_VALIDATION_FEATURE_DISABLE_THREAD_SAFETY_EXT,VALIDATION_CHECK_DISABLE_DESTROY_PIPELINE
