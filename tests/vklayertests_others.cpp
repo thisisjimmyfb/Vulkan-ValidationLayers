@@ -27,6 +27,47 @@
 #include "cast_utils.h"
 #include "layer_validation_tests.h"
 
+TEST_F(VkLayerTest, DuplicateMessageLimit) {
+    TEST_DESCRIPTION("Use the duplicate_message_id setting and verify correct operation");
+
+    SetEnvVar("VK_LAYER_DUPLICATE_MESSAGE_LIMIT", "3");
+
+    if (InstanceExtensionSupported(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)) {
+        m_instance_extension_names.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+    } else {
+        printf("%s %s Extension not supported, skipping tests\n", kSkipPrefix,
+               VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+        return;
+    }
+    ASSERT_NO_FATAL_FAILURE(InitFramework(m_errorMonitor));
+    PFN_vkGetPhysicalDeviceProperties2KHR vkGetPhysicalDeviceProperties2KHR =
+        (PFN_vkGetPhysicalDeviceProperties2KHR)vk::GetInstanceProcAddr(instance(), "vkGetPhysicalDeviceProperties2KHR");
+    ASSERT_TRUE(vkGetPhysicalDeviceProperties2KHR != nullptr);
+
+    // Create an invalid pNext structure to trigger the stateless validation warning
+    VkBaseOutStructure bogus_struct{};
+    bogus_struct.sType = static_cast<VkStructureType>(0x33333333);
+    auto properties2 = lvl_init_struct<VkPhysicalDeviceProperties2KHR>(&bogus_struct);
+
+    // Should get the first three errors just fine
+    m_errorMonitor->SetDesiredFailureMsg(kWarningBit, "VUID-VkPhysicalDeviceProperties2-pNext-pNext");
+    vkGetPhysicalDeviceProperties2KHR(gpu(), &properties2);
+    m_errorMonitor->VerifyFound();
+    m_errorMonitor->SetDesiredFailureMsg(kWarningBit, "VUID-VkPhysicalDeviceProperties2-pNext-pNext");
+    vkGetPhysicalDeviceProperties2KHR(gpu(), &properties2);
+    m_errorMonitor->VerifyFound();
+    m_errorMonitor->SetDesiredFailureMsg(kWarningBit, "VUID-VkPhysicalDeviceProperties2-pNext-pNext");
+    vkGetPhysicalDeviceProperties2KHR(gpu(), &properties2);
+    m_errorMonitor->VerifyFound();
+
+    // Limit should prevent the message from coming through a fourth time
+    m_errorMonitor->ExpectSuccess(kWarningBit);
+    vkGetPhysicalDeviceProperties2KHR(gpu(), &properties2);
+    m_errorMonitor->VerifyNotFound();
+
+    SetEnvVar("VK_LAYER_DUPLICATE_MESSAGE_LIMIT", "");
+}
+
 TEST_F(VkLayerTest, MessageIdFilterString) {
     TEST_DESCRIPTION("Validate that message id string filtering is working");
 
