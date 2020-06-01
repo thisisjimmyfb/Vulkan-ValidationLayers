@@ -977,37 +977,68 @@ void CreateFilterMessageIdList(std::string raw_id_list, std::string delimiter, s
         if ((int_id != 0) && (std::find(filter_list.begin(), filter_list.end(), int_id)) == filter_list.end()) {
             filter_list.push_back(int_id);
         }
-   }
+    }
 }
 
+uint32_t SetMessageDuplicateLimit(std::string &config_message_limit, std::string &env_message_limit) {
+    uint32_t limit = 0;
+    auto GetNum = [](std::string &source_string) {
+        uint32_t limit = 0;
+        int radix = ((source_string.find("0x") == 0) ? 16 : 10);
+        limit = std::strtoul(source_string.c_str(), nullptr, radix);
+        return limit;
+    };
+    // ENV var takes precedence over settings file
+    limit = GetNum(env_message_limit);
+    if (limit == 0) {
+        limit = GetNum(config_message_limit);
+    }
+    return limit;
+}
+
+typedef struct {
+    const char* layer_description;
+    CHECK_ENABLED &enables;
+    CHECK_DISABLED &disables;
+    std::vector<uint32_t> &message_filter_list;
+    uint32_t *duplicate_message_limit;
+} ConfigAndEnvSettings;
+
+
 // Process enables and disables set though the vk_layer_settings.txt config file or through an environment variable
-void ProcessConfigAndEnvSettings(const char* layer_description, CHECK_ENABLED &enables, CHECK_DISABLED &disables,
-    std::vector<uint32_t> &message_filter_list) {
-    std::string enable_key = layer_description;
-    std::string disable_key = layer_description;
-    std::string filter_msg_key = layer_description;
+void ProcessConfigAndEnvSettings(ConfigAndEnvSettings *settings_data) {
+    std::string enable_key(settings_data->layer_description);
+    std::string disable_key(settings_data->layer_description);
+    std::string filter_msg_key(settings_data->layer_description);
+    std::string message_limit(settings_data->layer_description);
     enable_key.append(".enables");
     disable_key.append(".disables");
     filter_msg_key.append(".message_id_filter");
+    message_limit.append(".duplicate_message_limit");
     std::string list_of_config_enables = getLayerOption(enable_key.c_str());
     std::string list_of_env_enables = GetLayerEnvVar("VK_LAYER_ENABLES");
     std::string list_of_config_disables = getLayerOption(disable_key.c_str());
     std::string list_of_env_disables = GetLayerEnvVar("VK_LAYER_DISABLES");
     std::string list_of_config_filter_ids = getLayerOption(filter_msg_key.c_str());
     std::string list_of_env_filter_ids = GetLayerEnvVar("VK_LAYER_MESSAGE_ID_FILTER");
+
+    std::string config_message_limit = getLayerOption(message_limit.c_str());
+    std::string env_message_limit = GetLayerEnvVar("VK_LAYER_DUPLICATE_MESSAGE_LIMIT");
+
 #if defined(_WIN32)
     std::string env_delimiter = ";";
 #else
     std::string env_delimiter = ":";
 #endif
     // Process layer enables and disable settings
-    SetLocalEnableSetting(list_of_config_enables, ",", enables);
-    SetLocalEnableSetting(list_of_env_enables, env_delimiter, enables);
-    SetLocalDisableSetting(list_of_config_disables, ",", disables);
-    SetLocalDisableSetting(list_of_env_disables, env_delimiter, disables);
+    SetLocalEnableSetting(list_of_config_enables, ",", settings_data->enables);
+    SetLocalEnableSetting(list_of_env_enables, env_delimiter, settings_data->enables);
+    SetLocalDisableSetting(list_of_config_disables, ",", settings_data->disables);
+    SetLocalDisableSetting(list_of_env_disables, env_delimiter, settings_data->disables);
     // Process message filter ID list
-    CreateFilterMessageIdList(list_of_config_filter_ids, ",", message_filter_list);
-    CreateFilterMessageIdList(list_of_env_filter_ids, env_delimiter, message_filter_list);
+    CreateFilterMessageIdList(list_of_config_filter_ids, ",", settings_data->message_filter_list);
+    CreateFilterMessageIdList(list_of_env_filter_ids, env_delimiter, settings_data->message_filter_list);
+    *settings_data->duplicate_message_limit = SetMessageDuplicateLimit(config_message_limit, env_message_limit);
 }
 
 void OutputLayerStatusInfo(ValidationObject *context) {
@@ -1146,7 +1177,9 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateInstance(const VkInstanceCreateInfo *pCreat
     if (validation_flags_ext) {
         SetValidationFlags(local_disables, validation_flags_ext);
     }
-    ProcessConfigAndEnvSettings(OBJECT_LAYER_DESCRIPTION, local_enables, local_disables, report_data->filter_message_ids);
+    ConfigAndEnvSettings config_and_env_settings_data {OBJECT_LAYER_DESCRIPTION, local_enables, local_disables,
+        report_data->filter_message_ids, &report_data->duplicate_message_limit};
+    ProcessConfigAndEnvSettings(&config_and_env_settings_data);
     layer_debug_messenger_actions(report_data, pAllocator, OBJECT_LAYER_DESCRIPTION);
 
     // Create temporary dispatch vector for pre-calls until instance is created
