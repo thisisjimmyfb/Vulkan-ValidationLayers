@@ -95,7 +95,7 @@ REM // ======== Functions ======== //
    echo Building %SHADERC_DIR%
    cd %SHADERC_DIR%\android_test
    echo Building shaderc with Android NDK
-   call ndk-build NDK_APPLICATION_MK=../../../jni/shaderc/Application.mk THIRD_PARTY_PATH=../third_party -j 4
+   call ndk-build.cmd NDK_APPLICATION_MK=../../../jni/shaderc/Application.mk THIRD_PARTY_PATH=../third_party -j 4
    REM Check for existence of one lib, even though we should check for all results
    if not exist %SHADERC_DIR%\android_test\obj\local\x86\libshaderc.a (
       echo.

@@ -14,6 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+export ANDROID_SDK_HOME=C:\\NVPACK\\android-sdk-windows
+export ANDROID_NDK_HOME=C:\\NVPACK\\android-sdk-windows\\ndk\\21.3.6528147
+export PATH=$ANDROID_SDK_HOME:$PATH
+export PATH=$ANDROID_NDK_HOME:$PATH
+export PATH=$ANDROID_SDK_HOME\\build-tools\\26.0.3:$PATH
+
+
 if [ -z "${ANDROID_SDK_HOME}" ];
 then echo "Please set ANDROID_SDK_HOME, exiting"; exit 1;
 else echo "ANDROID_SDK_HOME is ${ANDROID_SDK_HOME}";
@@ -38,9 +45,9 @@ function findtool() {
 }
 
 # Check for dependencies
-findtool aapt
-findtool zipalign
-findtool jarsigner
+findtool aapt.exe
+findtool zipalign.exe
+findtool jarsigner.exe
 
 set -ev
 
@@ -60,7 +67,7 @@ function create_APK() {
 # build layers
 #
 ./update_external_sources_android.sh --no-build
-ndk-build -j $cores
+ndk-build.cmd -j $cores
 
 #
 # build VulkanLayerValidationTests APK
